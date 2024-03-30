@@ -16,6 +16,7 @@ public class AssemblyDefinitionModifier : Editor {
 	/// </summary>
 	/// <param name="referencesToAdd">The names, or GUID of the AssemblyReferences you want to add.</param>
 	public static void AddAssemblyReferencesToSelected(params string[] referencesToAdd) {
+		log = "";
 		Object assembly = AssemblyDefinitionModifier.GetAssemblyObjectFrom(Selection.objects);
 
 		string path = AssetDatabase.GetAssetPath(assembly);
