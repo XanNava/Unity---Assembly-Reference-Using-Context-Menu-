@@ -24,7 +24,6 @@ public class AssemblyDefinitionUsings : Editor {
 		ExtractReferences(assemblyData, ref crntReferncesStrs);
 
 		foreach (var refs in crntReferncesStrs) {
-			Debug.Log("crntRef : " + refs + "\n");
 			log += "crntRef : " + refs + "\n";
 		}
 
@@ -59,8 +58,6 @@ public class AssemblyDefinitionUsings : Editor {
 
 		if (assemblyData.ContainsKey("references")) {
 			log += "Extracting : References \n";
-
-			Debug.Log(assemblyData["references"].ToString());
 
 			crntReferences = assemblyData["references"].ToString().Split(new char[] { '"' });
 
