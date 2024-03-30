@@ -9,25 +9,27 @@ using UnityEditor.Compilation;
 
 using UnityEngine;
 
-public class AssemblyDefinitionUsings : Editor {
+public class AssemblyDefinitionModifier : Editor {
 	public static string log;
 	/// <summary>
 	/// Main function to call to add from MenuContext
 	/// </summary>
 	/// <param name="referencesToAdd">The names, or GUID of the AssemblyReferences you want to add.</param>
 	public static void AddAssemblyReferencesToSelected(params string[] referencesToAdd) {
-		Object assembly = AssemblyDefinitionUsings.GetAssemblyObjectFrom(Selection.objects);
+		Object assembly = AssemblyDefinitionModifier.GetAssemblyObjectFrom(Selection.objects);
 
 		string path = AssetDatabase.GetAssetPath(assembly);
 		Assembly targetAssembly = GetAssemblyWithPath(path);
 		string assemblyText = File.ReadAllText(Path.GetFullPath(path));
 		Dictionary<string, object> assemblyData = JsonConvert.DeserializeObject<Dictionary<string, object>>(assemblyText);
 		List<string> crntReferncesStrs = new List<string>();
+		//Debug.Log("Loading : \n" + assemblyText + "\n");
 		log += "Loading : \n" + assemblyText + "\n";
 
 		ExtractReferences(assemblyData, ref crntReferncesStrs);
 
 		foreach (var refs in crntReferncesStrs) {
+			//Debug.Log("crntRef : " + refs + "\n");
 			log += "crntRef : " + refs + "\n";
 		}
 
@@ -35,11 +37,13 @@ public class AssemblyDefinitionUsings : Editor {
 		List<string> referencesToAddFiltered = crntReferncesStrs;
 		referencesToAddFiltered.AddRange(referencesToAdd.Except(crntReferncesStrs));
 
+		//Debug.Log("[ADM]: if1=" + (referencesToAddFiltered.Count > 0));
 		if (referencesToAddFiltered.Count > 0) {
 			bool isValidOperation = true;
 			List<Assembly> newAssemblyReferences;
 			isValidOperation = GetAssemblies(referencesToAddFiltered, out newAssemblyReferences);
 
+			//Debug.Log("[ADM]: if2=" + !isValidOperation);
 			if (!isValidOperation) {
 				return;
 			}
@@ -48,13 +52,14 @@ public class AssemblyDefinitionUsings : Editor {
 
 			RefreshEditorAsset(targetAssembly);
 
+			//Debug.Log("[ADM]: References added to " + targetAssembly.name + ": " + string.Join(", ", referencesToAddFiltered) + "\n");
 			log += "References added to " + targetAssembly.name + ": " + string.Join(", ", referencesToAddFiltered) + "\n";
 		}
 		else {
 			log += "WRN All references already exist in " + targetAssembly.name + "\n";
 		}
 
-		Debug.Log(log);
+		//Debug.Log(log);
 	}
 
 	/// <summary>
@@ -99,7 +104,7 @@ public class AssemblyDefinitionUsings : Editor {
 			log += "WRN All references already exist in " + targetAssembly.name + "\n";
 		}
 
-		Debug.Log(log);
+		//Debug.Log(log);
 	}
 
 	private static void ExtractReferences(Dictionary<string, object> assemblyData, ref List<string> crntReferncesStrs) {
@@ -115,7 +120,7 @@ public class AssemblyDefinitionUsings : Editor {
 					continue;
 				}
 				if (crntReferences.Length >= 3) {
-					if (str.Contains('[') || str.Contains(']')) {
+					if (str.Contains('[') || str.Contains(']') || str.Contains(',')) {
 						continue;
 					}
 
@@ -130,19 +135,15 @@ public class AssemblyDefinitionUsings : Editor {
 
 	private static void SetAssemblyReferences(Assembly assembly, Assembly[] references) {
 		string asmdefPath = CompilationPipeline.GetAssemblyDefinitionFilePathFromAssemblyName(assembly.name);
-
-		log += "Path: " + asmdefPath + "\n";
+		//Debug.Log("[ADM]: Path= " + asmdefPath + "\n");
+		log += "[ADM]: Path: " + asmdefPath + "\n";
 		if (!string.IsNullOrEmpty(asmdefPath)) {
 			string asmdefText = File.ReadAllText(asmdefPath);
 
 			Dictionary<string, object> asmdefData = JsonConvert.DeserializeObject<Dictionary<string, object>>(asmdefText);
 
-			foreach (var keyv in asmdefData) {
-				log += keyv.Key + "\n";
-				log += keyv.Value + "\n";
-			}
-
-			log += !asmdefData.ContainsKey("references") + "\n";
+			//Debug.Log("[ADM]:" + !asmdefData.ContainsKey("references") + "\n");
+			log += "[ADM]:" + !asmdefData.ContainsKey("references") + "\n";
 			if (!asmdefData.ContainsKey("references")) {
 				asmdefData["references"] = references.Select(r => r.name).ToList();
 			}
@@ -151,7 +152,8 @@ public class AssemblyDefinitionUsings : Editor {
 				var existingReferences = (asmdefData["references"] as object[])?.Select(r => r.ToString()).ToList() ?? new List<string>();
 
 				foreach (var refs in existingReferences) {
-					log += "REFS : " + refs + "\n";
+					//Debug.Log("[ADM]: REFS : " + refs + "\n");
+					log += "[ADM]: REFS : " + refs + "\n";
 				}
 
 				existingReferences.AddRange(references.Select(r => r.name));
@@ -159,34 +161,42 @@ public class AssemblyDefinitionUsings : Editor {
 			}
 
 			string updatedJson = JsonConvert.SerializeObject(asmdefData, Formatting.Indented);
-			log += updatedJson + "\n";
+			//Debug.Log("[ADM]: " + updatedJson + "\n");
+			log += "[ADM]: " + updatedJson + "\n";
 
 			File.WriteAllText(asmdefPath, updatedJson);
 
-			log += "References section updated.\n";
+			//Debug.Log("[ADM]: References section updated.\n");
+			log += "[ADM]: References section updated.\n";
 			return;
 		}
 
-		log += "WRN Failed to find .asmdef file for assembly: " + assembly.name + "\n";
+		//Debug.Log("[ADM][WRN]: Failed to find .asmdef file for assembly: " + assembly.name + "\n");
+		log += "[ADM][WRN]: Failed to find .asmdef file for assembly: " + assembly.name + "\n";
 	}
 
-	private static bool GetAssemblies(List<string> referencesToAddFiltered, out List<Assembly> newAssemblyReferences) {
-		newAssemblyReferences = new List<Assembly>();
+	private static bool GetAssemblies(List<string> assembliesToGet, out List<Assembly> results) {
+		results = new List<Assembly>();
 		bool isValidOperation = true;
 
-		foreach (string reference in referencesToAddFiltered) {
+		foreach (string reference in assembliesToGet) {
+			//Debug.Log("[ADM]: ADM.GetAssemblies(): Getting " + reference);
+
 			Assembly referenceAssembly;
 			if (reference.Contains("GUID")) {
+				//Debug.Log("[ADM]: ADM.GetAssemblies(): Getting assembly by GUID.");
 				referenceAssembly = GetAssemblyWithGUID(reference);
 			}
 			else {
+				//Debug.Log("[ADM]: ADM.GetAssemblies(): Getting assembly by Name.");
 				referenceAssembly = GetAssemblyWithName(reference);
 			}
 
 			if (referenceAssembly != null) {
-				newAssemblyReferences.Add(referenceAssembly);
+				results.Add(referenceAssembly);
 			}
 			else {
+				//Debug.Log("[ADM]:" + reference + " assembly not found.\n");
 				log += reference + " assembly not found.\n";
 				isValidOperation = false;
 			}
@@ -194,6 +204,7 @@ public class AssemblyDefinitionUsings : Editor {
 
 		return isValidOperation;
 	}
+
 	private static Object GetAssemblyObjectFrom(params Object[] selectedObjects) {
 		if (selectedObjects == null || selectedObjects.Length == 0) {
 			log += "No assembly definition file selected.";
@@ -213,7 +224,6 @@ public class AssemblyDefinitionUsings : Editor {
 
 		return null;
 	}
-
 	private static Assembly GetAssemblyWithPath(string path) {
 		Assembly[] playerAssemblies = CompilationPipeline.GetAssemblies(AssembliesType.Player);
 
