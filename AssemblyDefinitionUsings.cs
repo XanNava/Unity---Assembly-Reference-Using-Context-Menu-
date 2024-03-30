@@ -11,7 +11,11 @@ using UnityEngine;
 
 public class AssemblyDefinitionUsings : Editor {
 	public static string log;
-	public static void AddAssemblyReferences(params string[] referencesToAdd) {
+	/// <summary>
+	/// Main function to call to add from MenuContext
+	/// </summary>
+	/// <param name="referencesToAdd">The names, or GUID of the AssemblyReferences you want to add.</param>
+	public static void AddAssemblyReferencesToSelected(params string[] referencesToAdd) {
 		Object assembly = AssemblyDefinitionUsings.GetAssemblyObjectFrom(Selection.objects);
 
 		string path = AssetDatabase.GetAssetPath(assembly);
@@ -42,7 +46,52 @@ public class AssemblyDefinitionUsings : Editor {
 
 			SetAssemblyReferences(targetAssembly, newAssemblyReferences.ToArray());
 
-			SetDirty(targetAssembly);
+			RefreshEditorAsset(targetAssembly);
+
+			log += "References added to " + targetAssembly.name + ": " + string.Join(", ", referencesToAddFiltered) + "\n";
+		}
+		else {
+			log += "WRN All references already exist in " + targetAssembly.name + "\n";
+		}
+
+		Debug.Log(log);
+	}
+
+	/// <summary>
+	/// Main function to call to add from Scripts
+	/// </summary>
+	/// <param name="assembly">Object of the assembly you want to add.</param>
+	/// <param name="referencesToAdd">The names, or GUID of the AssemblyReferences you want to add.</param>
+	public static void AddAssemblyReferencesToPassed(Object assembly, params string[] referencesToAdd) {
+		string path = AssetDatabase.GetAssetPath(assembly);
+		Assembly targetAssembly = GetAssemblyWithPath(path);
+		string assemblyText = File.ReadAllText(Path.GetFullPath(path));
+		Dictionary<string, object> assemblyData = JsonConvert.DeserializeObject<Dictionary<string, object>>(assemblyText);
+		List<string> crntReferncesStrs = new List<string>();
+		log += "Loading : \n" + assemblyText + "\n";
+
+		ExtractReferences(assemblyData, ref crntReferncesStrs);
+
+		foreach (var refs in crntReferncesStrs) {
+			log += "crntRef : " + refs + "\n";
+		}
+
+		// Add references that are not already there
+		List<string> referencesToAddFiltered = crntReferncesStrs;
+		referencesToAddFiltered.AddRange(referencesToAdd.Except(crntReferncesStrs));
+
+		if (referencesToAddFiltered.Count > 0) {
+			bool isValidOperation = true;
+			List<Assembly> newAssemblyReferences;
+			isValidOperation = GetAssemblies(referencesToAddFiltered, out newAssemblyReferences);
+
+			if (!isValidOperation) {
+				return;
+			}
+
+			SetAssemblyReferences(targetAssembly, newAssemblyReferences.ToArray());
+
+			RefreshEditorAsset(targetAssembly);
 
 			log += "References added to " + targetAssembly.name + ": " + string.Join(", ", referencesToAddFiltered) + "\n";
 		}
@@ -145,7 +194,6 @@ public class AssemblyDefinitionUsings : Editor {
 
 		return isValidOperation;
 	}
-
 	private static Object GetAssemblyObjectFrom(params Object[] selectedObjects) {
 		if (selectedObjects == null || selectedObjects.Length == 0) {
 			log += "No assembly definition file selected.";
@@ -178,7 +226,6 @@ public class AssemblyDefinitionUsings : Editor {
 
 		return null;
 	}
-
 	private static Assembly GetAssemblyWithName(string name) {
 		Assembly[] playerAssemblies = CompilationPipeline.GetAssemblies(AssembliesType.Player);
 
@@ -191,7 +238,6 @@ public class AssemblyDefinitionUsings : Editor {
 
 		return null;
 	}
-
 	private static Assembly GetAssemblyWithGUID(string name) {
 		Assembly[] playerAssemblies = CompilationPipeline.GetAssemblies(AssembliesType.Player);
 		name = name.Replace("GUID:", "");
@@ -200,7 +246,7 @@ public class AssemblyDefinitionUsings : Editor {
 		return GetAssemblyWithPath(assetPath);
 	}
 
-	private static void SetDirty(Assembly assembly) {
+	private static void RefreshEditorAsset(Assembly assembly) {
 		// Find the corresponding asset in the project
 		string assetPath = CompilationPipeline.GetAssemblyDefinitionFilePathFromAssemblyName(assembly.name);
 		UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetPath);
