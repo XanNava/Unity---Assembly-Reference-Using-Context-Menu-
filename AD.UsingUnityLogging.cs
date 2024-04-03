@@ -1,13 +1,18 @@
+using SysZero.UnityExtends;
+
 using UnityEditor;
 
-public class UsingLogging : Editor {
-	[MenuItem("Assets/Create/Scripting/Usings/Unity.Logging", false, 24)]
+using UnityEngine;
+
+public class UsingUnityLogging : Editor {
+	[MenuItem("Assets/Create/Scripting/Usings/UnityPackages/Logging", false, 24)]
 	private static void AddUnityLoggingUsings() {
-		AssemblyDefinitionModifier.AddAssemblyReferencesToSelected("Unity.Logging", "Unity.Burst", "Unity.Collections");
+		Debug.Log("HERE1");
+		AssemblyDefinition.Modifier.AddAssemblyReferencesToSelected("Unity.Logging", "Unity.Burst", "Unity.Collections");
 	}
 
-	[MenuItem("Assets/Create/Scripting/Usings/Unity.Logging", true, 24)]
+	[MenuItem("Assets/Create/Scripting/Usings/UnityPackages/Logging", true, 24)]
 	private static bool ValidateAssemblyDefinition() {
-		return AssemblyDefinitionModifier.isSelectedAssembly();
+		return AssemblyDefinition.Modifier.isSelectedAssembly();
 	}
 }
