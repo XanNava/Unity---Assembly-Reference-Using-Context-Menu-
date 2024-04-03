@@ -6,5 +6,5 @@ There will be a new menu under Scripting called Usings. Should be greyed out if 
 
 Note:All files should go into an "Editor" folder.
 
-If you are getting an error about Unity.Newtonsoft
+If you are getting an error about Unity.Newtonsoft<br>
 https://stackoverflow.com/questions/71664312/using-unity-plastic-newtonsoft-json-not-found-in-rider
